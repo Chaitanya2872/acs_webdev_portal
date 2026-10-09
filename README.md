@@ -76,6 +76,29 @@ Example bucket-scoped IAM policy:
 
 Use least privilege. Do not grant `AmazonS3FullAccess` unless you explicitly must and understand the risk.
 
+### Configure CORS for browser uploads
+
+There are two separate browser-to-server connections:
+
+- React to this API: set `ALLOWED_ORIGINS` in the backend `.env` to the exact React origin, including scheme and port. Multiple origins can be comma-separated, for example `http://localhost:5173,https://app.example.com`.
+- React to S3: configure CORS on the S3 bucket. The backend returns a presigned URL, and the browser uploads the file directly to S3, so backend CORS settings do not apply to that upload request.
+
+In the bucket's **Permissions → Cross-origin resource sharing (CORS)** settings, use a configuration like this, replacing the origin with the exact origin of your React app:
+
+```json
+[
+  {
+    "AllowedOrigins": ["http://localhost:5173"],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+Keep the bucket private; CORS does not make objects public. The `Content-Type` sent by the browser when using the presigned upload URL must match the content type used to request that URL.
+
 ## Local development
 
 ```bash
@@ -250,7 +273,8 @@ The project includes mocked S3 unit tests, and the real S3 integration path requ
 - If requests fail with `UNSUPPORTED_FILE_TYPE`, ensure the content type is one of the allowed values
 - If requests fail with `FILE_TOO_LARGE`, verify `MAX_FILE_SIZE` and the file size being transmitted
 - If `403` or `AccessDenied` occurs, validate bucket permissions and object keys
-- If `CORS` errors appear, ensure the frontend origin is listed in `ALLOWED_ORIGINS`
+- If an API request to the backend fails CORS, ensure the browser's exact frontend origin is listed in `ALLOWED_ORIGINS`
+- If the API request succeeds but the browser's upload or download request to the S3 URL fails CORS, configure CORS on the S3 bucket for that frontend origin and method
 
 ## Important notes
 
