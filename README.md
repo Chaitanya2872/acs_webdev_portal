@@ -129,6 +129,7 @@ http://localhost:3000/docs
 ## Health endpoints
 
 ```bash
+curl http://localhost:3000/
 curl http://localhost:3000/health
 curl http://localhost:3000/health/ready
 ```

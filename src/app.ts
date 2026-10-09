@@ -59,6 +59,28 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await app.register(errorHandler);
 
+  app.get('/', {
+    schema: {
+      tags: ['Health'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                status: { type: 'string' },
+                service: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+    handler: async () => createSuccessResponse({ status: 'ok', service: 's3-file-api' }),
+  });
+
   app.get('/health', {
     schema: {
       tags: ['Health'],
