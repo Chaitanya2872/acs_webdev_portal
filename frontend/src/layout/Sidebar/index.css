@@ -1,0 +1,345 @@
+.fawnix-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 254px;
+  height: 100vh;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: visible; /* FIX: never clip the profile menu or collapsed toggle */
+  color: #dcece9;
+  background:
+    radial-gradient(circle at 70% 0%, rgba(0, 179, 145, .12), transparent 30%),
+    #032722;
+  border-right: 1px solid rgba(255,255,255,.04);
+  transition: width .22s ease;
+}
+
+.fawnix-sidebar.collapsed {
+  width: 76px;
+}
+
+.sidebar-brand-row {
+  height: 74px;
+  padding: 0 18px 0 22px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-shrink: 0;
+}
+
+.sidebar-brand-mark {
+  width: 36px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: #26ddb8;
+  flex: 0 0 auto;
+}
+
+.sidebar-brand-name {
+  color: #f8fffd;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+
+.sidebar-collapse-button {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: #b4ccc8;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.sidebar-collapse-button:hover {
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+
+.sidebar-navigation {
+  flex: 1;
+  min-height: 0; /* FIX: lets the nav shrink instead of pushing the bottom block */
+  padding: 14px 12px 0;
+  overflow-y: auto;
+}
+
+.sidebar-menu-item {
+  width: 100%;
+  min-height: 44px;
+  margin: 2px 0;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #c5d8d5;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.sidebar-menu-item:hover {
+  color: #fff;
+  background: rgba(17, 191, 151, .10);
+}
+
+.sidebar-menu-item.active {
+  color: #fff;
+  font-weight: 650;
+  background: linear-gradient(90deg, rgba(12, 159, 127, .58), rgba(10, 125, 104, .42));
+  box-shadow: inset 0 0 0 1px rgba(61, 222, 186, .06);
+}
+
+.sidebar-menu-item svg {
+  flex: 0 0 auto;
+}
+
+.sidebar-storage {
+  margin: 0 23px 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(167, 212, 204, .22);
+}
+
+.sidebar-storage-title {
+  margin-bottom: 12px;
+  color: #c7dbd7;
+  font-size: 12px;
+}
+
+.sidebar-storage-title span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sidebar-storage-track {
+  width: 100%;
+  height: 7px;
+  border-radius: 99px;
+  background: #315550;
+  overflow: hidden;
+}
+
+.sidebar-storage-fill {
+  width: 56%;
+  height: 100%;
+  border-radius: inherit;
+  background: #23d2ad;
+}
+
+.sidebar-storage-meta {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #d2e2df;
+  font-size: 10px;
+}
+
+.sidebar-storage-meta strong {
+  font-weight: 500;
+}
+
+.sidebar-bottom {
+  position: relative; /* FIX */
+  z-index: 2;         /* FIX: sits above the nav so the menu is never covered */
+  flex-shrink: 0;     /* FIX */
+  overflow: visible;  /* FIX */
+  padding: 0 12px 18px;
+  border-top: 1px solid rgba(167, 212, 204, .22);
+}
+
+.sidebar-bottom > .sidebar-menu-item {
+  margin-top: 12px;
+}
+
+.sidebar-profile {
+  width: 100%;
+  min-height: 58px;
+  margin-top: 12px;
+  padding: 8px 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid rgba(167, 212, 204, .12);
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-profile:hover { background: rgba(255, 255, 255, .045); }
+
+.sidebar-profile-wrap {
+  position: relative;
+  overflow: visible; /* FIX */
+}
+
+.profile-avatar-small {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(145deg, #5d7f72, #183d35);
+  border: 2px solid rgba(255,255,255,.55);
+  font-size: 13px;
+  font-weight: 700;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.sidebar-profile-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-profile-copy strong {
+  color: #f2faf8;
+  font-size: 12px;
+}
+
+.sidebar-profile-copy span {
+  margin-top: 2px;
+  color: #91aaa6;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.profile-arrow {
+  margin-left: auto;
+  color: #9bb5b0;
+  flex: 0 0 auto;
+}
+
+/* FIX: menu now spans exactly the profile wrapper width, so it stays inside the sidebar */
+.sidebar-profile-menu {
+  position: absolute;
+  z-index: 1100;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: auto;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid rgba(167, 212, 204, .22);
+  border-radius: 11px;
+  background: #fff;
+  color: #1e293b;
+  box-shadow: 0 12px 32px rgba(0, 20, 18, .22);
+}
+
+.sidebar-profile-menu-user {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0; /* FIX: allows long emails to truncate */
+  padding: 7px 8px 11px;
+  border-bottom: 1px solid #edf2f1;
+}
+.sidebar-profile-menu-user strong { color: #1e293b; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-profile-menu-user span { overflow: hidden; color: #82928f; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+
+.sidebar-profile-logout {
+  width: 100%;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: linear-gradient(115deg, #062d28 0%, #075449 52%, #0d7663 100%);
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidebar-profile-logout:hover { filter: brightness(1.08); }
+
+.sidebar-logout {
+  display: none;
+}
+
+.fawnix-sidebar.collapsed .sidebar-brand-row {
+  padding: 0;
+  justify-content: center;
+}
+
+.fawnix-sidebar.collapsed .sidebar-collapse-button {
+  position: absolute;
+  right: -13px;
+  top: 23px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  color: #526a67;
+  box-shadow: 0 2px 10px rgba(0,0,0,.14);
+}
+
+.fawnix-sidebar.collapsed .sidebar-navigation {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.fawnix-sidebar.collapsed .sidebar-menu-item {
+  justify-content: center;
+  padding: 0;
+}
+
+.fawnix-sidebar.collapsed .sidebar-bottom {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.fawnix-sidebar.collapsed .sidebar-profile {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* FIX: collapsed rail is too narrow, so open the menu beside it with a fixed width */
+.fawnix-sidebar.collapsed .sidebar-profile-menu {
+  right: auto;
+  left: calc(100% + 20px);
+  bottom: 0;
+  width: 220px;
+  max-width: calc(100vw - 100px);
+}
+
+@media (max-width: 900px) {
+  .fawnix-sidebar {
+    display: none;
+  }
+}
+
+/* FIX: if the sidebar is shown as a drawer on small screens, keep the menu on-screen */
+@media (max-width: 480px) {
+  .sidebar-profile-menu {
+    max-width: calc(100vw - 24px);
+  }
+
+  .fawnix-sidebar.collapsed .sidebar-profile-menu {
+    left: calc(100% + 12px);
+    width: min(220px, calc(100vw - 100px));
+  }
+}

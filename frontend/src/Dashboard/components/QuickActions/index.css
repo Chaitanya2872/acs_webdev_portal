@@ -1,0 +1,201 @@
+/* =========================================================
+   QUICK ACTIONS CARD
+   ========================================================= */
+
+.quick-actions-card {
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+
+  padding: 22px;
+
+  display: flex;
+  flex-direction: column;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03);
+
+  overflow: hidden;
+}
+
+
+/* =========================================================
+   TITLE
+   ========================================================= */
+
+.quick-actions-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  margin-bottom: 20px;
+
+  color: #2563eb;
+}
+
+.quick-actions-title svg {
+  flex-shrink: 0;
+}
+
+.quick-actions-title h2 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+
+/* =========================================================
+   BUTTON BASE
+   ========================================================= */
+
+.quick-actions-card button {
+  width: 100%;
+  min-height: 42px;
+
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border-radius: 8px;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.quick-actions-card button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+/* =========================================================
+   UPLOAD BUTTON
+   ========================================================= */
+
+.quick-upload-button {
+  margin-bottom: 10px;
+
+  border: 1px solid #2563eb;
+
+  background: #2563eb;
+
+  color: #ffffff;
+}
+
+.quick-upload-button:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+
+  box-shadow:
+    0 4px 10px rgba(37, 99, 235, 0.16);
+
+  transform: translateY(-1px);
+}
+
+.quick-upload-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+
+/* =========================================================
+   NEW FOLDER BUTTON
+   ========================================================= */
+
+.quick-folder-button {
+  border: 1px solid #dbe2ea;
+
+  background: #ffffff;
+
+  color: #334155;
+}
+
+.quick-folder-button:hover:not(:disabled) {
+  border-color: #2563eb;
+
+  background: #f8fbff;
+
+  color: #2563eb;
+}
+
+.quick-folder-button:active:not(:disabled) {
+  background: #eff6ff;
+}
+
+
+/* =========================================================
+   SPINNER
+   ========================================================= */
+
+.quick-action-spinner {
+  animation: quick-action-spin 0.85s linear infinite;
+}
+
+@keyframes quick-action-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* =========================================================
+   FOCUS
+   ========================================================= */
+
+.quick-actions-card button:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .quick-actions-card {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .quick-actions-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .quick-actions-title {
+    margin-bottom: 16px;
+  }
+
+  .quick-actions-card button {
+    min-height: 40px;
+  }
+}
