@@ -26,6 +26,7 @@ React frontend -> Fastify API -> S3Service -> Amazon S3
 ## Installation
 
 ```bash
+cd backend
 npm install
 cp .env.example .env
 ```
@@ -102,12 +103,15 @@ Keep the bucket private; CORS does not make objects public. The `Content-Type` s
 ## Local development
 
 ```bash
+cd backend
 npm run dev
 ```
 
 The app listens on port 3000 by default.
 
 ## Scripts
+
+Run these commands from the `backend` directory:
 
 ```bash
 npm run dev
@@ -247,12 +251,16 @@ curl -X DELETE http://localhost:3000/api/v1/files/documents/report.pdf
 
 ## Docker
 
+Run these commands from the repository root:
+
 ```bash
-docker build -t s3-file-api .
-docker run --rm -p 3000:3000 --env-file .env s3-file-api
+docker build -t s3-file-api ./backend
+docker run --rm -p 3000:3000 --env-file ./backend/.env s3-file-api
 ```
 
 ## Testing
+
+Run from the `backend` directory:
 
 ```bash
 npm test
@@ -287,37 +295,45 @@ The project includes mocked S3 unit tests, and the real S3 integration path requ
 ## Final structure
 
 ```text
-src/
-  app.ts
-  server.ts
-  config/
-    aws.ts
-    env.ts
-  middleware/
-    error-handler.ts
-  modules/
-    files/
-      file.controller.ts
-      file.routes.ts
-      file.schema.ts
-      file.service.ts
-      file.types.ts
-    folders/
-      folder.controller.ts
-      folder.routes.ts
-      folder.schema.ts
-      folder.service.ts
-      folder.types.ts
-  services/
-    s3.service.ts
-  types/
-    fastify.d.ts
-  utils/
-    filename.ts
-    response.ts
-    s3-key.ts
-  tests/
-    files/
-    folders/
-    s3/
+backend/
+ .dockerignore
+ .env.example
+ Dockerfile
+ package.json
+ package-lock.json
+ README.md
+ tsconfig.json
+ src/
+   app.ts
+   server.ts
+   config/
+     aws.ts
+     env.ts
+   middleware/
+     error-handler.ts
+   modules/
+     files/
+       file.controller.ts
+       file.routes.ts
+       file.schema.ts
+       file.service.ts
+       file.types.ts
+     folders/
+       folder.controller.ts
+       folder.routes.ts
+       folder.schema.ts
+       folder.service.ts
+       folder.types.ts
+   services/
+     s3.service.ts
+   types/
+     fastify.d.ts
+   utils/
+     filename.ts
+     response.ts
+     s3-key.ts
+ tests/
+   files/
+   folders/
+   s3/
 ```
