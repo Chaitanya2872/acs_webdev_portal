@@ -1,3 +1,5 @@
+import { SESSION_EXPIRED_EVENT, clearSession, getSessionToken } from "./session";
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api/v1"
 ).replace(/\/+$/, "");
@@ -5,8 +7,10 @@ const API_BASE_URL = (
 export async function apiRequest(path, options = {}) {
   const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
+  const token = getSessionToken();
   const headers = {
     Accept: "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.body instanceof FormData
       ? {}
       : options.body
@@ -47,7 +51,16 @@ export async function apiRequest(path, options = {}) {
       (typeof payload === "string" ? payload : null) ||
       `Request failed with status ${response.status}`;
 
-    throw new Error(message);
+    // An expired or revoked session sends the user back to the sign-in page.
+    if (response.status === 401 && token) {
+      clearSession();
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+
+    const error = new Error(message);
+    error.status = response.status;
+    error.code = payload?.error?.code;
+    throw error;
   }
 
   // Backend response format: { success: true, data: ... }

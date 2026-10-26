@@ -23,6 +23,28 @@ export type S3FileSummary = {
   lastModified: string;
 };
 
+export type ObjectHead = {
+  size: number;
+  contentType: string;
+  etag: string;
+  lastModified: string;
+};
+
+export type DownloadUrlOptions = {
+  fileName?: string;
+  disposition?: 'inline' | 'attachment';
+  contentType?: string;
+};
+
+/** RFC 6266 Content-Disposition with an ASCII fallback and a UTF-8 filename* for non-ASCII names. */
+export function buildContentDisposition(disposition: 'inline' | 'attachment', fileName: string): string {
+  const asciiFallback = fileName.normalize('NFKD').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '').trim() || 'document';
+  const encoded = encodeURIComponent(fileName).replace(/['()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
+}
+
+const stripEtag = (etag?: string) => (etag ?? '').replace(/"/g, '');
+
 export class S3Service {
   constructor(
     private readonly client: S3Client = s3Client,
@@ -311,9 +333,14 @@ export class S3Service {
     }
   }
 
-  async generateDownloadUrl(key: string, expiresIn = this.expirationSeconds): Promise<{ key: string; downloadUrl: string; expiresIn: number }> {
+  async generateDownloadUrl(key: string, expiresIn = this.expirationSeconds, options: DownloadUrlOptions = {}): Promise<{ key: string; downloadUrl: string; expiresIn: number }> {
     try {
-      const command = new GetObjectCommand({ Bucket: this.bucketName, Key: key });
+      const command = new GetObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        ...(options.fileName ? { ResponseContentDisposition: buildContentDisposition(options.disposition ?? 'inline', options.fileName) } : {}),
+        ...(options.contentType ? { ResponseContentType: options.contentType } : {}),
+      });
       const downloadUrl = await getSignedUrl(this.client, command, { expiresIn });
       return { key, downloadUrl, expiresIn };
     } catch (error) {
@@ -350,5 +377,84 @@ export class S3Service {
     } catch (error) {
       this.handleS3Error(error, 'S3_ERROR', 'Unable to delete the file in S3.');
     }
+  }
+
+  /** Object metadata, or null when the object does not exist. */
+  async headObject(key: string): Promise<ObjectHead | null> {
+    try {
+      const response = await this.client.send(new HeadObjectCommand({ Bucket: this.bucketName, Key: key }));
+      return {
+        size: response.ContentLength ?? 0,
+        contentType: response.ContentType ?? 'application/octet-stream',
+        etag: stripEtag(response.ETag),
+        lastModified: response.LastModified ? response.LastModified.toISOString() : new Date().toISOString(),
+      };
+    } catch (error) {
+      const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
+      if (status === 404 || (error as { name?: string })?.name === 'NotFound') {
+        return null;
+      }
+      this.handleS3Error(error, 'S3_ERROR', 'Unable to read object metadata from S3.');
+    }
+  }
+
+  /** Reads part of an object: `bytes=0-1023` for the first KiB or `bytes=-1024` for the last KiB. */
+  async readObjectRange(key: string, range: string): Promise<Buffer> {
+    try {
+      const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucketName, Key: key, Range: range }));
+      const bytes = await response.Body?.transformToByteArray();
+      return Buffer.from(bytes ?? []);
+    } catch (error) {
+      this.handleS3Error(error, 'S3_ERROR', 'Unable to read the object from S3.');
+    }
+  }
+
+  async copyObject(sourceKey: string, destinationKey: string, contentType: string, contentDisposition?: string): Promise<void> {
+    try {
+      const encodedSource = sourceKey.split('/').map(encodeURIComponent).join('/');
+      await this.client.send(new CopyObjectCommand({
+        Bucket: this.bucketName,
+        CopySource: `${this.bucketName}/${encodedSource}`,
+        Key: destinationKey,
+        MetadataDirective: 'REPLACE',
+        ContentType: contentType,
+        ...(contentDisposition ? { ContentDisposition: contentDisposition } : {}),
+      }));
+    } catch (error) {
+      this.handleS3Error(error, 'S3_ERROR', 'Unable to copy the object in S3.');
+    }
+  }
+
+  async putObject(key: string, body: Buffer, contentType: string, contentMd5?: string, contentDisposition?: string): Promise<{ etag: string }> {
+    try {
+      const response = await this.client.send(new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+        ...(contentDisposition ? { ContentDisposition: contentDisposition } : {}),
+        ...(contentMd5 ? { ContentMD5: contentMd5 } : {}),
+      }));
+      return { etag: stripEtag(response.ETag) };
+    } catch (error) {
+      this.handleS3Error(error, 'S3_ERROR', 'Unable to upload the object to S3.');
+    }
+  }
+
+  /** Deletes objects in batches; returns the keys S3 reported as failed. */
+  async deleteObjects(keys: string[]): Promise<string[]> {
+    const failed: string[] = [];
+    for (let index = 0; index < keys.length; index += 1000) {
+      try {
+        const response = await this.client.send(new DeleteObjectsCommand({
+          Bucket: this.bucketName,
+          Delete: { Objects: keys.slice(index, index + 1000).map((Key) => ({ Key })), Quiet: true },
+        }));
+        failed.push(...(response.Errors ?? []).flatMap((item) => (item.Key ? [item.Key] : [])));
+      } catch {
+        failed.push(...keys.slice(index, index + 1000));
+      }
+    }
+    return failed;
   }
 }

@@ -1,15 +1,19 @@
 import { S3Service } from '../../services/s3.service';
 import { env } from '../../config/env';
 import { buildS3Key } from '../../utils/s3-key';
-import { normalizeFileName, normalizeFolderName, validateContentType } from '../../utils/filename';
+import { assertNotReservedPath, normalizeFileName, normalizeFolderName, validateContentType } from '../../utils/filename';
 import { AppError } from '../../utils/response';
 
 export class FileService {
-  constructor(private readonly s3Service: S3Service) {}
+  constructor(
+    private readonly s3Service: S3Service,
+    private readonly reservedPrefix: string = env.S3_DOCUMENTS_PREFIX,
+  ) {}
 
   async createUploadRequest(body: { folderName: string; fileName: string; contentType: string; fileSize: number }) {
     try {
       const folderName = normalizeFolderName(body.folderName);
+      assertNotReservedPath(folderName, this.reservedPrefix);
       const fileName = normalizeFileName(body.fileName);
       const contentType = String(body.contentType ?? '').trim().toLowerCase();
 
@@ -52,8 +56,10 @@ export class FileService {
   async listFiles(query: { folderName?: string; limit?: number; continuationToken?: string }) {
     try {
       const folderName = query.folderName ? normalizeFolderName(query.folderName) : undefined;
+      if (folderName) assertNotReservedPath(folderName, this.reservedPrefix);
       const limit = query.limit ?? 100;
-      return this.s3Service.listFiles(folderName, limit, query.continuationToken);
+      const result = await this.s3Service.listFiles(folderName, limit, query.continuationToken);
+      return { ...result, files: result.files.filter((file) => !file.key.startsWith(`${this.reservedPrefix}/`)) };
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
@@ -68,6 +74,7 @@ export class FileService {
       if (!trimmedKey || trimmedKey.includes('..') || trimmedKey.startsWith('/')) {
         throw new AppError('INVALID_REQUEST', 'The file key is invalid.', 400);
       }
+      assertNotReservedPath(trimmedKey, this.reservedPrefix);
 
       const metadata = await this.s3Service.getFileMetadata(trimmedKey);
       const download = await this.s3Service.generateDownloadUrl(trimmedKey, env.PRESIGNED_URL_EXPIRATION);
@@ -91,6 +98,7 @@ export class FileService {
       if (!safeKey || safeKey.includes('..') || safeKey.startsWith('/')) {
         throw new AppError('INVALID_REQUEST', 'The file key is invalid.', 400);
       }
+      assertNotReservedPath(safeKey, this.reservedPrefix);
 
       const currentMeta = await this.s3Service.getFileMetadata(safeKey);
       const contentType = String(body.contentType ?? currentMeta.contentType ?? '').trim().toLowerCase();
@@ -134,6 +142,7 @@ export class FileService {
       if (!safeKey || safeKey.includes('..') || safeKey.startsWith('/')) {
         throw new AppError('INVALID_REQUEST', 'The file key is invalid.', 400);
       }
+      assertNotReservedPath(safeKey, this.reservedPrefix);
 
       const exists = await this.s3Service.objectExists(safeKey);
       if (!exists) {

@@ -1,10 +1,13 @@
-import { S3Service, S3FileSummary } from './s3.service';
+import crypto from 'node:crypto';
+import { DownloadUrlOptions, ObjectHead, S3Service, S3FileSummary, buildContentDisposition } from './s3.service';
 import { env } from '../config/env';
 import { normalizeFolderName } from '../utils/filename';
 import { toFolderMarker } from '../utils/s3-key';
 import { AppError } from '../utils/response';
 
-type MemoryFile = S3FileSummary & { body: Buffer };
+type MemoryFile = S3FileSummary & { body: Buffer; etag?: string; contentDisposition?: string };
+
+const md5 = (body: Buffer) => crypto.createHash('md5').update(body).digest('hex');
 
 export class MemoryStorageService extends S3Service {
   private readonly objects = new Map<string, MemoryFile>();
@@ -122,8 +125,12 @@ export class MemoryStorageService extends S3Service {
     return { key, uploadUrl: this.localUrl(key), expiresIn };
   }
 
-  async generateDownloadUrl(key: string, expiresIn = env.PRESIGNED_URL_EXPIRATION): Promise<{ key: string; downloadUrl: string; expiresIn: number }> {
-    return { key, downloadUrl: this.localUrl(key), expiresIn };
+  async generateDownloadUrl(key: string, expiresIn = env.PRESIGNED_URL_EXPIRATION, options: DownloadUrlOptions = {}): Promise<{ key: string; downloadUrl: string; expiresIn: number }> {
+    const query = new URLSearchParams();
+    if (options.fileName) query.set('response-content-disposition', buildContentDisposition(options.disposition ?? 'inline', options.fileName));
+    if (options.contentType) query.set('response-content-type', options.contentType);
+    const suffix = query.size ? `?${query.toString()}` : '';
+    return { key, downloadUrl: `${this.localUrl(key)}${suffix}`, expiresIn };
   }
 
   async replaceFile(currentKey: string, nextKey: string, contentType: string): Promise<{ key: string; uploadUrl: string; expiresIn: number }> {
@@ -142,6 +149,52 @@ export class MemoryStorageService extends S3Service {
     this.objects.delete(key);
   }
 
+  async headObject(key: string): Promise<ObjectHead | null> {
+    const file = this.objects.get(key);
+    if (!file || key.endsWith('/')) return null;
+    return { size: file.size, contentType: file.contentType, etag: file.etag ?? md5(file.body), lastModified: file.lastModified };
+  }
+
+  async readObjectRange(key: string, range: string): Promise<Buffer> {
+    const file = this.objects.get(key);
+    if (!file) {
+      throw new AppError('FILE_NOT_FOUND', 'The requested file was not found.', 404);
+    }
+    const suffix = /^bytes=-(\d+)$/.exec(range);
+    if (suffix) return file.body.subarray(Math.max(0, file.body.length - Number(suffix[1])));
+    const span = /^bytes=(\d+)-(\d*)$/.exec(range);
+    if (!span) throw new AppError('INVALID_RANGE', 'Invalid byte range.', 400);
+    const end = span[2] ? Number(span[2]) + 1 : file.body.length;
+    return file.body.subarray(Number(span[1]), end);
+  }
+
+  async copyObject(sourceKey: string, destinationKey: string, contentType: string, contentDisposition?: string): Promise<void> {
+    const source = this.objects.get(sourceKey);
+    if (!source) {
+      throw new AppError('FILE_NOT_FOUND', 'The requested file was not found.', 404);
+    }
+    this.objects.set(destinationKey, {
+      ...source,
+      key: destinationKey,
+      fileName: destinationKey.split('/').pop() ?? destinationKey,
+      contentType,
+      contentDisposition,
+      lastModified: new Date().toISOString(),
+    });
+  }
+
+  async putObject(key: string, body: Buffer, contentType: string, _contentMd5?: string, contentDisposition?: string): Promise<{ etag: string }> {
+    this.uploadLocalFile(key, body, contentType);
+    const stored = this.objects.get(key);
+    if (stored) stored.contentDisposition = contentDisposition;
+    return { etag: md5(body) };
+  }
+
+  async deleteObjects(keys: string[]): Promise<string[]> {
+    keys.forEach((key) => this.objects.delete(key));
+    return [];
+  }
+
   uploadLocalFile(key: string, body: Buffer, contentType: string): void {
     this.objects.set(key, {
       key,
@@ -150,6 +203,7 @@ export class MemoryStorageService extends S3Service {
       contentType,
       lastModified: new Date().toISOString(),
       body,
+      etag: md5(body),
     });
   }
 

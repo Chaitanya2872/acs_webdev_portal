@@ -3,6 +3,7 @@ import {
   X,
   LayoutDashboard,
   FolderOpen,
+  FileText,
   Clock3,
   Star,
   UsersRound,
@@ -14,6 +15,7 @@ import "./index.css";
 
 const items = [
   ["dashboard", "Dashboard", LayoutDashboard],
+  ["documents", "Website Documents", FileText],
   ["my-files", "My Files", FolderOpen],
   ["recent", "Recent", Clock3],
   ["starred", "Starred", Star],

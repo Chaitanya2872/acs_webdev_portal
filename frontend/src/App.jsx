@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -13,7 +13,10 @@ import Dashboard from "./Dashboard";
 import Profile from "./Profile";
 import FolderPage from "./Folders/FolderPage";
 import Login from "./Login";
+import WebsiteDocuments from "./Documents";
 import { ToastProvider } from "./components/common/Toast";
+import { logout, requestOtp, verifyOtp } from "./services/authApi";
+import { SESSION_EXPIRED_EVENT, getSessionToken } from "./services/session";
 
 import "./App.css";
 
@@ -33,6 +36,13 @@ const AppShell = () => {
     }
 
     switch (pathname) {
+      case "/documents":
+        return {
+          activeItem: "documents",
+          title: "Website documents",
+          subtitle: "PDFs published on the corporate website.",
+        };
+
       case "/profile":
         return {
           activeItem: "profile",
@@ -52,9 +62,32 @@ const AppShell = () => {
   };
 
   const meta = getPageMeta();
+  const signedIn = Boolean(getSessionToken());
+
+  // An expired or revoked session (any 401 from the API) sends the user back to login.
+  useEffect(() => {
+    const handleExpired = () => navigate("/login", { replace: true, state: { from: pathname } });
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+  }, [navigate, pathname]);
 
   if (pathname === "/login") {
-    return <Login />;
+    if (signedIn) return <Navigate to="/" replace />;
+
+    return (
+      <Login
+        onSendOtp={requestOtp}
+        onResendOtp={requestOtp}
+        onVerifyOtp={async (credentials) => {
+          await verifyOtp(credentials);
+          navigate(location.state?.from || "/", { replace: true });
+        }}
+      />
+    );
+  }
+
+  if (!signedIn) {
+    return <Navigate to="/login" replace state={{ from: pathname }} />;
   }
 
   const handleNavigation = (item) => {
@@ -65,16 +98,17 @@ const AppShell = () => {
         navigate("/");
         break;
 
+      case "documents":
+        navigate("/documents");
+        break;
+
       case "profile":
         navigate("/profile");
         break;
 
       case "logout":
-        // Clear frontend-only login/session data.
-        localStorage.removeItem("fawnix_logged_in");
-
-        // Go back to login.
-        navigate("/login", { replace: true });
+        // Ends the server session and clears the stored token/user.
+        logout().finally(() => navigate("/login", { replace: true }));
         break;
 
       default:
@@ -102,6 +136,11 @@ const AppShell = () => {
         <Route
           path="/profile"
           element={<Profile />}
+        />
+
+        <Route
+          path="/documents"
+          element={<WebsiteDocuments />}
         />
 
         <Route

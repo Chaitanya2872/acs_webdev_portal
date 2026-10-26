@@ -9,3 +9,5 @@ npm-debug.log*
 .DS_Store
 postman
 .postman
+.data
+legacy-migration-report*.json

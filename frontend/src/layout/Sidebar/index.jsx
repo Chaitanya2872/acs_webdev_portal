@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
+  FileText,
   LayoutDashboard,
   LogOut,
   PanelLeftClose,
@@ -12,6 +13,7 @@ import "./index.css";
 
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "documents", label: "Website Documents", icon: FileText },
 ];
 
 const readUser = () => {

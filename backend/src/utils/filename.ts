@@ -1,3 +1,5 @@
+import { AppError } from './response';
+
 export const ALLOWED_CONTENT_TYPES = new Set([
   'application/pdf',
   'application/msword',
@@ -70,6 +72,15 @@ export function normalizeFileName(fileName: string): string {
   }
 
   return normalized;
+}
+
+/** The managed documents prefix belongs to the document module; the generic file manager must not touch it. */
+export function assertNotReservedPath(keyOrFolder: string, documentsPrefix: string): void {
+  const prefix = documentsPrefix.replace(/^\/+|\/+$/g, '');
+  const value = String(keyOrFolder ?? '').trim().replace(/^\/+/, '');
+  if (prefix && (value === prefix || value.startsWith(`${prefix}/`))) {
+    throw new AppError('RESERVED_PATH', 'This folder is managed by Website Documents and cannot be changed here.', 403);
+  }
 }
 
 export function validateContentType(contentType: string): boolean {
