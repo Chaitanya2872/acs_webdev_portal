@@ -52,7 +52,25 @@ export function authRoutes(authService: AuthService, guards: AuthGuards) {
             type: 'object',
             properties: {
               success: { type: 'boolean' },
-              data: { type: 'object', properties: { token: { type: 'string' }, expiresAt: { type: 'string' }, user: userSchema } },
+              data: {
+                type: 'object',
+                properties: {
+                  token: { type: 'string' },
+                  expiresAt: { type: 'string' },
+                  user: userSchema,
+                  // Response serialization drops unlisted fields; the frontend stores these Attend tokens.
+                  attend: {
+                    type: 'object',
+                    properties: {
+                      access_token: { type: 'string' },
+                      refresh_token: { type: 'string' },
+                      expires_in: { type: 'number' },
+                      refresh_expires_in: { type: 'number' },
+                      refresh_expires_at: { type: 'string' },
+                    },
+                  },
+                },
+              },
             },
           },
         },

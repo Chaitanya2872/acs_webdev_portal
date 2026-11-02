@@ -194,6 +194,31 @@ describe('unpublish, archive and delete', () => {
   });
 });
 
+describe('status counts', () => {
+  it('counts documents per status for the portal KPI cards', async () => {
+    const stats = async () => {
+      const response = await ctx.app.inject({ method: 'GET', url: '/api/v1/admin/documents/stats', headers: bearer(ctx.tokens.viewer) });
+      expect(response.statusCode).toBe(200);
+      return response.json().data as Record<'total' | 'active' | 'draft' | 'published' | 'unpublished' | 'archived', number>;
+    };
+    const before = await stats();
+
+    const draftUpload = await stageUpload(ctx, ctx.tokens.publisher, makePdf('kpi-draft'), 'KPI Draft.pdf');
+    const draft = (await createDocument(ctx, ctx.tokens.publisher, { uploadId: draftUpload.uploadId, title: 'KPI draft', categoryId: await ctx.categoryId('notices') })).json().data.document;
+    const liveUpload = await stageUpload(ctx, ctx.tokens.publisher, makePdf('kpi-live'), 'KPI Live.pdf');
+    await createDocument(ctx, ctx.tokens.publisher, { uploadId: liveUpload.uploadId, title: 'KPI live', categoryId: await ctx.categoryId('notices'), publish: true });
+    await ctx.app.inject({ method: 'POST', url: `/api/v1/admin/documents/${draft.id}/archive`, headers: bearer(ctx.tokens.publisher) });
+
+    const after = await stats();
+    expect(after.total - before.total).toBe(2);
+    expect(after.active - before.active).toBe(1);
+    expect(after.published - before.published).toBe(1);
+    expect(after.draft - before.draft).toBe(0);
+    expect(after.archived - before.archived).toBe(1);
+    expect(after.total).toBe(after.active + after.archived);
+  });
+});
+
 describe('authorization', () => {
   it('requires a session for every portal route and the right role for changes', async () => {
     const anonymous = [

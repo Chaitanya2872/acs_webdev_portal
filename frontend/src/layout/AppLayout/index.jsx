@@ -6,7 +6,7 @@ import "./index.css";
 
 const AppLayout = ({
   children,
-  activeItem = "dashboard",
+  activeItem = "documents",
   pageTitle = "",
   pageSubtitle = "",
   onNavigate,

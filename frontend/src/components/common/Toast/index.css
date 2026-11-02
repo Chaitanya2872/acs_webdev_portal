@@ -19,17 +19,17 @@
 	border: 1px solid #f0c4c4;
 	border-radius: 8px;
 	background: #fff;
-	box-shadow: 0 8px 24px rgba(24, 52, 49, 0.14);
+	box-shadow: 0 8px 24px rgba(28, 35, 48, 0.14);
 	color: #9e3434;
-	font-size: 13px;
+	font-size: var(--text-sm);
 	line-height: 1.45;
 	pointer-events: auto;
 	animation: app-toast-in 160ms ease-out;
 }
 
 .app-toast-success {
-	border-color: #b7e4d5;
-	color: #17634f;
+	border-color: #bdc9de;
+	color: #223658;
 }
 
 .app-toast-info {

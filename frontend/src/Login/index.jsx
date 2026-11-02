@@ -1,9 +1,27 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  ArrowRight,
+  Check,
+  CircleAlert,
+  CloudUpload,
+  Globe,
+  Layers,
+  Lock,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 import "./index.css";
-import logo from "./logo.png";
+import logo from "../assets/fawnix-logo.png";
+import laptopScene from "../assets/login-laptop.webp";
 
 const RESEND_SECONDS = 30;
 const OTP_LENGTH = 6;
+
+const FEATURES = [
+  { icon: CloudUpload, title: "Upload Documents", text: "Add and manage files securely" },
+  { icon: Layers, title: "Organize by Category", text: "Keep documents well-structured" },
+  { icon: Globe, title: "Publish to Website", text: "Make selected documents live" },
+];
 
 const normalizeError = (error, fallback) =>
   error?.message || (typeof error === "string" ? error : fallback);
@@ -24,78 +42,26 @@ const validateOtp = (value) => {
   return "";
 };
 
-/* ───────────── Icons ───────────── */
+const formatCountdown = (seconds) =>
+  `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
-const svgProps = {
-  width: 18,
-  height: 18,
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.75,
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  "aria-hidden": "true",
-  focusable: "false",
-};
-
-const UserIcon = () => (
-  <svg {...svgProps}>
-    <circle cx="12" cy="8" r="3.8" />
-    <path d="M4.5 20c0-3.4 3.4-6 7.5-6s7.5 2.6 7.5 6" />
-  </svg>
-);
-
-const ShieldIcon = () => (
-  <svg {...svgProps}>
-    <path d="M12 3 4.5 6v5.5c0 4.5 3.1 8 7.5 9.5 4.4-1.5 7.5-5 7.5-9.5V6L12 3Z" />
-    <path d="m9 12 2.2 2.2L15.5 10" />
-  </svg>
-);
-
-const LockIcon = () => (
-  <svg {...svgProps} width={15} height={15}>
-    <rect x="5" y="11" width="14" height="9" rx="2.5" />
-    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-  </svg>
-);
-
-const AlertIcon = () => (
-  <svg {...svgProps} width={15} height={15}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7.5v5M12 16.2v.1" />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg {...svgProps} width={16} height={16}>
-    <path d="m5 12 4.2 4.2L19 6.5" />
-  </svg>
-);
-
-const ArrowIcon = () => (
-  <svg {...svgProps} width={17} height={17} className="btn-arrow">
-    <path d="M5 12h14M13 6l6 6-6 6" />
-  </svg>
-);
-
-const FolderIcon = () => (
-  <svg {...svgProps} width={19} height={19}>
-    <path d="M3.5 8a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V8Z" />
-  </svg>
-);
-
-const MoreIcon = () => (
-  <svg {...svgProps} width={16} height={16} fill="currentColor" stroke="none">
-    <circle cx="5.5" cy="12" r="1.6" />
-    <circle cx="12" cy="12" r="1.6" />
-    <circle cx="18.5" cy="12" r="1.6" />
-  </svg>
-);
-
-const ShareIcon = () => (
-  <svg {...svgProps} width={17} height={17}>
-    <path d="M7 17 17 7M8.5 7H17v8.5" />
+/* Soft blue waves behind the whole page. */
+const BackgroundWaves = () => (
+  <svg className="login-waves" viewBox="0 0 1821 864" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="wave-deep" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor="#b9d1fb" />
+        <stop offset="1" stopColor="#5f95f2" />
+      </linearGradient>
+      <linearGradient id="wave-soft" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
+        <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+      </linearGradient>
+    </defs>
+    <path d="M0 660c230-30 470 40 690 120 120 44 220 70 330 84H0Z" fill="url(#wave-deep)" opacity="0.85" />
+    <path d="M0 600c260-34 520 50 760 150 130 54 230 90 340 114H0Z" fill="url(#wave-soft)" opacity="0.7" />
+    <path d="M1590 0c-30 140 40 250 231 265V0Z" fill="url(#wave-deep)" opacity="0.9" />
+    <path d="M590 0c140 120 330 190 560 200 200 8 380-50 520-200Z" fill="#ffffff" opacity="0.45" />
   </svg>
 );
 
@@ -104,12 +70,10 @@ const Spinner = () => <span className="spinner" aria-hidden="true" />;
 function Login({ onSendOtp, onVerifyOtp, onResendOtp }) {
   const [employeeCode, setEmployeeCode] = useState("");
   const [otp, setOtp] = useState("");
-  const [step, setStep] = useState("credentials");
+  // Employee code the current OTP was requested for; empty until a request succeeds.
+  const [otpRequestedFor, setOtpRequestedFor] = useState("");
   const [loadingAction, setLoadingAction] = useState("");
-  const [fieldErrors, setFieldErrors] = useState({
-    employeeCode: "",
-    otp: "",
-  });
+  const [fieldErrors, setFieldErrors] = useState({ employeeCode: "", otp: "" });
   const [formError, setFormError] = useState("");
   const [deliveryMessage, setDeliveryMessage] = useState("");
   const [resendSeconds, setResendSeconds] = useState(0);
@@ -117,28 +81,12 @@ function Login({ onSendOtp, onVerifyOtp, onResendOtp }) {
 
   const employeeCodeRef = useRef(null);
   const otpRef = useRef(null);
-  const didMount = useRef(false);
-  const cardRef = useRef(null);
-  const frameRef = useRef(0);
+
+  const otpRequested = Boolean(otpRequestedFor);
 
   useEffect(() => {
-    if (step === "otp") otpRef.current?.focus();
-    else employeeCodeRef.current?.focus();
-  }, [step]);
-
-  useEffect(() => {
-    if (!didMount.current) {
-      didMount.current = true;
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => {
-      if (step === "otp") otpRef.current?.focus();
-      else employeeCodeRef.current?.focus();
-    }, 180);
-
-    return () => window.clearTimeout(timer);
-  }, [step]);
+    employeeCodeRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (resendSeconds <= 0) return undefined;
@@ -150,36 +98,21 @@ function Login({ onSendOtp, onVerifyOtp, onResendOtp }) {
     return () => window.clearInterval(timer);
   }, [resendSeconds]);
 
-  useEffect(() => () => window.cancelAnimationFrame(frameRef.current), []);
-
-  /* Visual only: feeds a soft light that follows the pointer over the card. */
-  const handlePointerMove = (event) => {
-    if (event.pointerType === "touch") return;
-
-    const card = cardRef.current;
-    if (!card) return;
-
-    const { clientX, clientY } = event;
-
-    window.cancelAnimationFrame(frameRef.current);
-
-    frameRef.current = window.requestAnimationFrame(() => {
-      const rect = card.getBoundingClientRect();
-
-      card.style.setProperty("--mx", `${clientX - rect.left}px`);
-      card.style.setProperty("--my", `${clientY - rect.top}px`);
-    });
-  };
-
-  const clearMessages = () => {
-    setFormError("");
-    setDeliveryMessage("");
-  };
-
   const handleEmployeeChange = (event) => {
-    setEmployeeCode(event.target.value.replace(/\s/g, ""));
-    setFieldErrors((errors) => ({ ...errors, employeeCode: "" }));
-    clearMessages();
+    const value = event.target.value.replace(/\s/g, "");
+
+    setEmployeeCode(value);
+    setFieldErrors({ employeeCode: "", otp: "" });
+    setFormError("");
+
+    // A different employee code needs its own OTP.
+    if (otpRequested && value.trim() !== otpRequestedFor) {
+      setOtpRequestedFor("");
+      setOtp("");
+      setResendSeconds(0);
+      setOtpAttempts(0);
+      setDeliveryMessage("");
+    }
   };
 
   const handleOtpChange = (event) => {
@@ -198,25 +131,18 @@ function Login({ onSendOtp, onVerifyOtp, onResendOtp }) {
 
   const focusFirstInvalid = () => {
     window.requestAnimationFrame(() => {
-      const invalid = document.querySelector(
-        '.fawnix-auth [aria-invalid="true"]'
-      );
-
-      invalid?.focus();
+      document.querySelector('.fawnix-auth [aria-invalid="true"]')?.focus();
     });
   };
 
-  const sendOtp = async (event) => {
-    event.preventDefault();
+  const requestOtp = async () => {
+    if (loadingAction || resendSeconds > 0) return;
 
     const error = validateEmployeeCode(employeeCode);
 
-    setFieldErrors((errors) => ({
-      ...errors,
-      employeeCode: error,
-    }));
-
-    clearMessages();
+    setFieldErrors({ employeeCode: error, otp: "" });
+    setFormError("");
+    setDeliveryMessage("");
 
     if (error) {
       focusFirstInvalid();
@@ -224,52 +150,44 @@ function Login({ onSendOtp, onVerifyOtp, onResendOtp }) {
     }
 
     const code = employeeCode.trim();
+    const isResend = otpRequestedFor === code;
+    const send = isResend && typeof onResendOtp === "function" ? onResendOtp : onSendOtp;
 
-    setOtp("");
-    setOtpAttempts(0);
-    setResendSeconds(RESEND_SECONDS);
-    setStep("otp");
-
-    if (typeof onSendOtp !== "function") {
-      setDeliveryMessage(
-        "OTP entry is ready. Connect the Send OTP API to deliver the verification code."
-      );
+    if (typeof send !== "function") {
+      setFormError("OTP delivery is not connected to the authentication service yet.");
       return;
     }
 
     setLoadingAction("send");
 
     try {
-      const result = await onSendOtp({
-        employeeCode: code,
-      });
+      const result = await send({ employeeCode: code });
 
-      setDeliveryMessage(
-        result?.message ||
-          "OTP sent successfully to your registered contact method."
-      );
+      setOtp("");
+      setOtpAttempts(0);
+      setOtpRequestedFor(code);
+      setResendSeconds(RESEND_SECONDS);
+      setDeliveryMessage(result?.message || "OTP sent successfully to your registered contact method.");
+
+      window.requestAnimationFrame(() => otpRef.current?.focus());
     } catch (errorObject) {
-      setFormError(
-        normalizeError(
-          errorObject,
-          "We couldn't send the OTP. Check your employee code and try again."
-        )
-      );
+      setFormError(normalizeError(errorObject, "We couldn't send the OTP. Check your employee code and try again."));
     } finally {
       setLoadingAction("");
     }
   };
 
-  const verifyOtp = async (event) => {
+  const signIn = async (event) => {
     event.preventDefault();
+
+    if (!otpRequested) {
+      requestOtp();
+      return;
+    }
 
     const error = validateOtp(otp);
 
-    setFieldErrors((errors) => ({
-      ...errors,
-      otp: error,
-    }));
-
+    setFieldErrors((errors) => ({ ...errors, otp: error }));
     setFormError("");
 
     if (error) {
@@ -278,457 +196,209 @@ function Login({ onSendOtp, onVerifyOtp, onResendOtp }) {
     }
 
     if (typeof onVerifyOtp !== "function") {
-      setFormError(
-        "OTP verification is not connected to the authentication service yet."
-      );
+      setFormError("OTP verification is not connected to the authentication service yet.");
       return;
     }
 
     setLoadingAction("verify");
 
     try {
-      await onVerifyOtp({
-        employeeCode: employeeCode.trim(),
-        otp: otp.trim(),
-      });
+      await onVerifyOtp({ employeeCode: otpRequestedFor, otp: otp.trim() });
     } catch (errorObject) {
       setOtpAttempts((attempts) => attempts + 1);
-
-      setFormError(
-        normalizeError(
-          errorObject,
-          "The OTP is incorrect or has expired. Request a new OTP and try again."
-        )
-      );
+      setFormError(normalizeError(errorObject, "The OTP is incorrect or has expired. Request a new OTP and try again."));
     } finally {
       setLoadingAction("");
     }
   };
 
-  const resendOtp = async () => {
-    if (resendSeconds > 0 || loadingAction) return;
-
-    clearMessages();
-
-    if (typeof onResendOtp !== "function") {
-      setResendSeconds(RESEND_SECONDS);
-      setOtp("");
-
-      setDeliveryMessage(
-        "Resend is ready in the UI. Connect the Resend OTP API to send a new code."
-      );
-
-      otpRef.current?.focus();
-      return;
-    }
-
-    setLoadingAction("resend");
-
-    try {
-      const result = await onResendOtp({
-        employeeCode: employeeCode.trim(),
-      });
-
-      setOtp("");
-      setResendSeconds(RESEND_SECONDS);
-
-      setDeliveryMessage(
-        result?.message ||
-          "A new OTP has been sent to your registered contact method."
-      );
-
-      otpRef.current?.focus();
-    } catch (errorObject) {
-      setFormError(
-        normalizeError(
-          errorObject,
-          "We couldn't resend the OTP. Please try again."
-        )
-      );
-    } finally {
-      setLoadingAction("");
-    }
-  };
-
-  const changeEmployeeCode = () => {
-    if (loadingAction) return;
-
-    setStep("credentials");
-    setOtp("");
-    setResendSeconds(0);
-    setOtpAttempts(0);
-
-    setFieldErrors({
-      employeeCode: "",
-      otp: "",
-    });
-
-    clearMessages();
-  };
-
-  const formatCountdown = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remaining = seconds % 60;
-
-    return `${String(minutes).padStart(2, "0")}:${String(
-      remaining
-    ).padStart(2, "0")}`;
-  };
+  const requestLabel = (() => {
+    if (loadingAction === "send") return "Sending…";
+    if (resendSeconds > 0) return `Resend in ${formatCountdown(resendSeconds)}`;
+    return otpRequested ? "Resend OTP" : "Request OTP";
+  })();
 
   const currentCell = Math.min(otp.length, OTP_LENGTH - 1);
 
   return (
     <div className="login-page fawnix-auth">
-      <div
-        className="login-card"
-        ref={cardRef}
-        onPointerMove={handlePointerMove}
-      >
-        <div className="login-left">
-          <div className="login-box">
-            <div className="auth-stage">
-              <section
-                className="auth-panel is-active"
-                aria-labelledby="signin-title"
-              >
-                <div className="auth-header">
-                  <div className="logo">
-                    <img src={logo} width={62} height={62} alt="Fawnix logo" />
-                  </div>
+      <BackgroundWaves />
 
-                  <div className="auth-heading">
-                    <div className="auth-kicker">
-                      <span className="auth-kicker-icon">
-                        <ShieldIcon />
-                      </span>
+      <main className="login-canvas">
+        <section className="login-intro" aria-labelledby="portal-title">
+          <h1 id="portal-title">Document Portal</h1>
+          <p className="login-intro-subtitle">Upload, Organize and Publish Documents for the Company Website</p>
+          <span className="login-intro-rule" aria-hidden="true" />
 
-                      <span>Fawnix Employee Access</span>
-                    </div>
+          <ul className="login-features">
+            {FEATURES.map(({ icon: Icon, title, text }) => (
+              <li key={title}>
+                <span className="login-feature-icon"><Icon aria-hidden="true" /></span>
+                <span className="login-feature-copy">
+                  <strong>{title}</strong>
+                  <span>{text}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-                    <h2 id="signin-title">Sign in with Fawnix</h2>
+        <img
+          className="login-scene"
+          src={laptopScene}
+          width={1485}
+          height={1059}
+          alt=""
+          decoding="async"
+          fetchPriority="high"
+        />
 
-                    <p className="login-description">
-                      Sign in securely with your employee code and OTP.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="step-track" aria-hidden="true">
-                  <span className="is-active" />
-                  <span className={step === "otp" ? "is-active" : ""} />
-                </div>
-
-                {step === "credentials" && (
-                  <form className="step-form" onSubmit={sendOtp} noValidate>
-                    <div
-                      className={`form-group${
-                        fieldErrors.employeeCode ? " has-error" : ""
-                      }`}
-                    >
-                      <label htmlFor="employee-code">Employee Code</label>
-
-                      <div className="input-wrap">
-                        <span className="input-icon">
-                          <UserIcon />
-                        </span>
-
-                        <input
-                          id="employee-code"
-                          ref={employeeCodeRef}
-                          type="text"
-                          value={employeeCode}
-                          onChange={handleEmployeeChange}
-                          onBlur={() =>
-                            setFieldErrors((errors) => ({
-                              ...errors,
-                              employeeCode:
-                                validateEmployeeCode(employeeCode),
-                            }))
-                          }
-                          placeholder="Enter your employee code"
-                          autoComplete="username"
-                          autoCapitalize="characters"
-                          spellCheck="false"
-                          aria-invalid={
-                            fieldErrors.employeeCode ? "true" : "false"
-                          }
-                          aria-describedby={
-                            fieldErrors.employeeCode
-                              ? "employee-code-error"
-                              : undefined
-                          }
-                        />
-                      </div>
-
-                      {fieldErrors.employeeCode && (
-                        <p
-                          className="field-error"
-                          id="employee-code-error"
-                          role="alert"
-                        >
-                          <AlertIcon />
-                          {fieldErrors.employeeCode}
-                        </p>
-                      )}
-                    </div>
-
-                    {formError && (
-                      <p className="form-error" role="alert">
-                        <AlertIcon />
-                        {formError}
-                      </p>
-                    )}
-
-                    <button
-                      className="primary-btn send-otp-btn"
-                      type="submit"
-                      disabled={loadingAction === "send"}
-                      aria-busy={loadingAction === "send"}
-                    >
-                      {loadingAction === "send" && <Spinner />}
-                      {loadingAction === "send" ? "Sending…" : "Send OTP"}
-                      {loadingAction !== "send" && <ArrowIcon />}
-                    </button>
-                  </form>
-                )}
-
-                {step === "otp" && (
-                  <form className="step-form" onSubmit={verifyOtp} noValidate>
-                    <div
-                      className="employee-summary"
-                      aria-label="Employee code"
-                    >
-                      <span className="summary-avatar">
-                        <UserIcon />
-                      </span>
-
-                      <div className="summary-text">
-                        <span className="summary-label">Employee Code</span>
-                        <strong>{employeeCode}</strong>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="change-btn"
-                        onClick={changeEmployeeCode}
-                        disabled={Boolean(loadingAction)}
-                      >
-                        Change
-                      </button>
-                    </div>
-
-                    <div
-                      className={`form-group${
-                        fieldErrors.otp ? " has-error" : ""
-                      }`}
-                    >
-                      <div className="otp-label-row">
-                        <label htmlFor="employee-otp">Enter OTP</label>
-
-                        <button
-                          type="button"
-                          className="resend-btn"
-                          onClick={resendOtp}
-                          disabled={
-                            resendSeconds > 0 || Boolean(loadingAction)
-                          }
-                        >
-                          {resendSeconds > 0
-                            ? `Resend OTP in ${formatCountdown(
-                                resendSeconds
-                              )}`
-                            : "Resend OTP"}
-                        </button>
-                      </div>
-
-                      <div className="otp-boxes">
-                        {Array.from({ length: OTP_LENGTH }).map((_, index) => (
-                          <span
-                            key={index}
-                            aria-hidden="true"
-                            className={`otp-cell${
-                              otp[index] ? " is-filled" : ""
-                            }${index === currentCell ? " is-current" : ""}`}
-                          >
-                            {otp[index] || ""}
-                          </span>
-                        ))}
-
-                        <input
-                          id="employee-otp"
-                          ref={otpRef}
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          maxLength={OTP_LENGTH}
-                          value={otp}
-                          onChange={handleOtpChange}
-                          onFocus={moveCaretToEnd}
-                          onClick={moveCaretToEnd}
-                          onBlur={() =>
-                            setFieldErrors((errors) => ({
-                              ...errors,
-                              otp: validateOtp(otp),
-                            }))
-                          }
-                          placeholder="Enter OTP"
-                          autoComplete="one-time-code"
-                          aria-invalid={fieldErrors.otp ? "true" : "false"}
-                          aria-describedby={
-                            fieldErrors.otp
-                              ? "employee-otp-error"
-                              : "otp-help"
-                          }
-                        />
-                      </div>
-
-                      <p className="otp-help" id="otp-help">
-                        Enter the verification code sent to your registered
-                        contact method.
-                      </p>
-
-                      {fieldErrors.otp && (
-                        <p
-                          className="field-error"
-                          id="employee-otp-error"
-                          role="alert"
-                        >
-                          <AlertIcon />
-                          {fieldErrors.otp}
-                        </p>
-                      )}
-                    </div>
-
-                    {deliveryMessage && (
-                      <p className="delivery-message" role="status">
-                        <CheckIcon />
-                        {deliveryMessage}
-                      </p>
-                    )}
-
-                    {formError && (
-                      <p className="form-error" role="alert">
-                        <AlertIcon />
-                        {formError}
-                      </p>
-                    )}
-
-                    {otpAttempts >= 3 && (
-                      <p className="security-note">
-                        Having trouble? Request a fresh OTP after the current
-                        countdown finishes.
-                      </p>
-                    )}
-
-                    <button
-                      className="primary-btn signin-btn"
-                      type="submit"
-                      disabled={loadingAction === "verify"}
-                      aria-busy={loadingAction === "verify"}
-                    >
-                      {loadingAction === "verify" && <Spinner />}
-                      {loadingAction === "verify"
-                        ? "Verifying…"
-                        : "Verify & Sign in"}
-                      {loadingAction !== "verify" && <ArrowIcon />}
-                    </button>
-                  </form>
-                )}
-
-                <div className="secure-note">
-                  <LockIcon />
-                  <span>Your Fawnix credentials are handled securely.</span>
-                </div>
-              </section>
-            </div>
+        <section className="login-card" aria-labelledby="signin-title">
+          <div className="login-brand">
+            <img src={logo} width={47} height={54} alt="" />
+            <span>FAWNIX</span>
           </div>
-        </div>
 
-        <div className="login-right">
-          <div className="right-content">
-            <span className="small-label">YOUR FILES, YOUR SPACE</span>
+          <div className="login-kicker">
+            <ShieldCheck aria-hidden="true" />
+            <span>Employee Access</span>
+          </div>
 
-            <h1>
-              Upload.
-              <br />
-              Organize.
-              <br />
-              <span>Share.</span>
-            </h1>
+          <h2 id="signin-title">Login</h2>
 
-            <p className="right-description">
-              Keep your documents, folders and important files organized in
-              one secure workspace.
-            </p>
+          <p className="login-description">
+            Welcome back to the document portal. Sign in with your employee code and a one-time password.
+          </p>
 
-            <div className="file-window">
-              <div className="window-header">
-                <div className="window-title">
-                  <span>My Files</span>
+          <form className="login-form" onSubmit={signIn} noValidate>
+            <div className={`form-group${fieldErrors.employeeCode ? " has-error" : ""}`}>
+              <label htmlFor="employee-code">Employee Code</label>
+
+              <div className="code-row">
+                <div className="input-wrap">
+                  <User className="input-icon" aria-hidden="true" />
+                  <input
+                    id="employee-code"
+                    ref={employeeCodeRef}
+                    type="text"
+                    value={employeeCode}
+                    onChange={handleEmployeeChange}
+                    placeholder="Enter your employee code"
+                    autoComplete="username"
+                    autoCapitalize="characters"
+                    spellCheck="false"
+                    aria-invalid={fieldErrors.employeeCode ? "true" : "false"}
+                    aria-describedby={fieldErrors.employeeCode ? "employee-code-error" : undefined}
+                  />
                 </div>
 
-                <button type="button" className="upload-mini">
-                  + Upload
+                <button
+                  type="button"
+                  className="request-btn"
+                  onClick={requestOtp}
+                  disabled={Boolean(loadingAction) || resendSeconds > 0}
+                  aria-busy={loadingAction === "send"}
+                >
+                  {loadingAction === "send" && <Spinner />}
+                  {requestLabel}
                 </button>
               </div>
 
-              <div className="file-list">
-                <div className="file-item">
-                  <div className="file-icon folder">
-                    <FolderIcon />
-                  </div>
-
-                  <div className="file-info">
-                    <strong>Project Documents</strong>
-                    <span>12 files · Updated today</span>
-                  </div>
-
-                  <span className="dots">
-                    <MoreIcon />
-                  </span>
-                </div>
-
-                <div className="file-item">
-                  <div className="file-icon pdf">PDF</div>
-
-                  <div className="file-info">
-                    <strong>Quarterly_Report_2026.pdf</strong>
-                    <span>4.8 MB · Shared</span>
-                  </div>
-
-                  <span className="shared">
-                    <ShareIcon />
-                  </span>
-                </div>
-
-                <div className="file-item">
-                  <div className="file-icon pdf">PDF</div>
-
-                  <div className="file-info">
-                    <strong>Employee_Handbook.pdf</strong>
-                    <span>2.1 MB · Updated yesterday</span>
-                  </div>
-
-                  <span className="dots">
-                    <MoreIcon />
-                  </span>
-                </div>
-              </div>
-
-              <div className="storage">
-                <div className="storage-top">
-                  <span>Storage</span>
-                  <span>7.2 GB / 10 GB</span>
-                </div>
-
-                <div className="progress">
-                  <div />
-                </div>
-              </div>
+              {fieldErrors.employeeCode && (
+                <p className="field-error" id="employee-code-error" role="alert">
+                  <CircleAlert aria-hidden="true" />
+                  {fieldErrors.employeeCode}
+                </p>
+              )}
             </div>
+
+            {deliveryMessage && (
+              <p className="delivery-message" role="status">
+                <Check aria-hidden="true" />
+                {deliveryMessage}
+              </p>
+            )}
+
+            <div
+              className={`form-group${fieldErrors.otp ? " has-error" : ""}${otpRequested ? "" : " is-disabled"}`}
+            >
+              <label htmlFor="employee-otp">Enter OTP</label>
+
+              <div className="otp-boxes">
+                {Array.from({ length: OTP_LENGTH }).map((_, index) => (
+                  <span
+                    key={index}
+                    aria-hidden="true"
+                    className={`otp-cell${otp[index] ? " is-filled" : ""}${index === currentCell ? " is-current" : ""}`}
+                  >
+                    {otp[index] || ""}
+                  </span>
+                ))}
+
+                <input
+                  id="employee-otp"
+                  ref={otpRef}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={OTP_LENGTH}
+                  value={otp}
+                  onChange={handleOtpChange}
+                  onFocus={moveCaretToEnd}
+                  onClick={moveCaretToEnd}
+                  disabled={!otpRequested}
+                  placeholder="Enter OTP"
+                  autoComplete="one-time-code"
+                  aria-invalid={fieldErrors.otp ? "true" : "false"}
+                  aria-describedby={fieldErrors.otp ? "employee-otp-error" : "otp-help"}
+                />
+              </div>
+
+              <p className="otp-help" id="otp-help">
+                {otpRequested
+                  ? "Enter the 6-digit code sent to your registered contact method."
+                  : "Request an OTP to enable this field."}
+              </p>
+
+              {fieldErrors.otp && (
+                <p className="field-error" id="employee-otp-error" role="alert">
+                  <CircleAlert aria-hidden="true" />
+                  {fieldErrors.otp}
+                </p>
+              )}
+            </div>
+
+            {formError && (
+              <p className="form-error" role="alert">
+                <CircleAlert aria-hidden="true" />
+                {formError}
+              </p>
+            )}
+
+            {otpAttempts >= 3 && (
+              <p className="security-note">
+                Having trouble? Request a fresh OTP after the current countdown finishes.
+              </p>
+            )}
+
+            <button
+              className="primary-btn"
+              type="submit"
+              disabled={!otpRequested || loadingAction === "verify"}
+              aria-busy={loadingAction === "verify"}
+            >
+              {loadingAction === "verify" && <Spinner />}
+              {loadingAction === "verify" ? "Signing in…" : "Sign in with Fawnix"}
+              {loadingAction !== "verify" && <ArrowRight className="btn-arrow" aria-hidden="true" />}
+            </button>
+          </form>
+
+          <div className="secure-note">
+            <Lock aria-hidden="true" />
+            <span>Your credentials are handled securely.</span>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }

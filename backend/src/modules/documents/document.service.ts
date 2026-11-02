@@ -600,6 +600,18 @@ export class DocumentService {
     };
   }
 
+  /** Document counts per status for the portal's KPI cards; `active` is everything except archived. */
+  async getStatusCounts() {
+    const rows = (await this.db.query<{ status: DocumentStatus; total: number }>(`SELECT status, count(*)::int AS total FROM documents GROUP BY status`)).rows;
+    const counts = { total: 0, active: 0, draft: 0, published: 0, unpublished: 0, archived: 0 };
+    for (const row of rows) {
+      counts[row.status] = row.total;
+      counts.total += row.total;
+      if (row.status !== 'archived') counts.active += row.total;
+    }
+    return counts;
+  }
+
   async listFinancialYears(): Promise<string[]> {
     const rows = (await this.db.query<{ financial_year: string }>(`SELECT DISTINCT financial_year FROM documents WHERE financial_year IS NOT NULL ORDER BY financial_year DESC`)).rows;
     return rows.map((row) => row.financial_year);

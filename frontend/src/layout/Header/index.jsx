@@ -1,7 +1,8 @@
 import React from "react";
-import { Bell, Search, Command } from "lucide-react";
+import logo from "../../assets/fawnix-logo.png";
 import "./index.css";
 
+/* Mobile-only top bar; on desktop the sidebar carries the brand and navigation. */
 const Header = ({ onMenuClick }) => (
   <header className="fawnix-header">
     <button
@@ -15,22 +16,9 @@ const Header = ({ onMenuClick }) => (
       <span />
     </button>
 
-    <div className="header-search">
-      <Search size={18} />
-      <input
-        type="search"
-        placeholder="Search files, folders and documents..."
-        aria-label="Search files, folders and documents"
-      />
-      <span className="header-shortcut"><Command size={12} /> K</span>
-    </div>
-
-    <div className="header-actions">
-      <button type="button" className="header-notification" aria-label="Notifications">
-        <Bell size={21} />
-        <i />
-      </button>
-
+    <div className="header-brand">
+      <img src={logo} width={26} height={30} alt="" />
+      <span>FAWNIX</span>
     </div>
   </header>
 );

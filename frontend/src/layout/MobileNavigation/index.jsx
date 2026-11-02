@@ -1,28 +1,10 @@
 import React from "react";
-import {
-  X,
-  LayoutDashboard,
-  FolderOpen,
-  FileText,
-  Clock3,
-  Star,
-  UsersRound,
-  CloudUpload,
-  Trash2,
-  HardDrive,
-} from "lucide-react";
+import { X, FileText, LogOut } from "lucide-react";
+import logo from "../../assets/fawnix-logo.png";
 import "./index.css";
 
 const items = [
-  ["dashboard", "Dashboard", LayoutDashboard],
   ["documents", "Website Documents", FileText],
-  ["my-files", "My Files", FolderOpen],
-  ["recent", "Recent", Clock3],
-  ["starred", "Starred", Star],
-  ["shared", "Shared With Me", UsersRound],
-  ["upload-center", "Upload Center", CloudUpload],
-  ["trash", "Trash", Trash2],
-  ["storage", "Storage", HardDrive],
 ];
 
 const MobileNavigation = ({ isOpen, onClose, activeItem, onNavigate }) => {
@@ -34,10 +16,10 @@ const MobileNavigation = ({ isOpen, onClose, activeItem, onNavigate }) => {
       <aside className="mobile-navigation">
         <div className="mobile-navigation-header">
           <div className="mobile-brand">
-            <div className="mobile-brand-logo">F</div>
+            <img className="mobile-brand-logo" src={logo} width={30} height={34} alt="Fawnix" />
             <strong>FAWNIX</strong>
           </div>
-          <button type="button" onClick={onClose} className="mobile-close-button">
+          <button type="button" onClick={onClose} className="mobile-close-button" aria-label="Close navigation">
             <X size={20} />
           </button>
         </div>
@@ -55,6 +37,15 @@ const MobileNavigation = ({ isOpen, onClose, activeItem, onNavigate }) => {
             </button>
           ))}
         </nav>
+
+        <button
+          type="button"
+          className="mobile-navigation-item mobile-navigation-logout"
+          onClick={() => onNavigate?.({ id: "logout" })}
+        >
+          <LogOut size={19} />
+          <span>Logout</span>
+        </button>
       </aside>
     </>
   );

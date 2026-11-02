@@ -9,9 +9,6 @@ import {
 } from "react-router-dom";
 
 import AppLayout from "./layout/AppLayout";
-import Dashboard from "./Dashboard";
-import Profile from "./Profile";
-import FolderPage from "./Folders/FolderPage";
 import Login from "./Login";
 import WebsiteDocuments from "./Documents";
 import { ToastProvider } from "./components/common/Toast";
@@ -25,43 +22,6 @@ const AppShell = () => {
   const navigate = useNavigate();
 
   const pathname = location.pathname;
-
-  const getPageMeta = () => {
-    if (pathname.startsWith("/folders/")) {
-      return {
-        activeItem: "dashboard",
-        title: "Folder documents",
-        subtitle: "Browse and organize documents in this folder.",
-      };
-    }
-
-    switch (pathname) {
-      case "/documents":
-        return {
-          activeItem: "documents",
-          title: "Website documents",
-          subtitle: "PDFs published on the corporate website.",
-        };
-
-      case "/profile":
-        return {
-          activeItem: "profile",
-          title: "Profile",
-          subtitle: "Manage your profile information.",
-        };
-
-      case "/dashboard":
-      case "/":
-      default:
-        return {
-          activeItem: "dashboard",
-          title: "",
-          subtitle: "",
-        };
-    }
-  };
-
-  const meta = getPageMeta();
   const signedIn = Boolean(getSessionToken());
 
   // An expired or revoked session (any 401 from the API) sends the user back to login.
@@ -94,16 +54,8 @@ const AppShell = () => {
     if (!item?.id) return;
 
     switch (item.id) {
-      case "dashboard":
-        navigate("/");
-        break;
-
       case "documents":
-        navigate("/documents");
-        break;
-
-      case "profile":
-        navigate("/profile");
+        navigate("/");
         break;
 
       case "logout":
@@ -118,41 +70,17 @@ const AppShell = () => {
 
   return (
     <AppLayout
-      activeItem={meta.activeItem}
-      pageTitle={meta.title}
-      pageSubtitle={meta.subtitle}
+      activeItem="documents"
+      pageTitle="Website documents"
+      pageSubtitle="PDFs published on the corporate website."
       onNavigate={handleNavigation}
     >
       <Routes>
-        {/* Dashboard */}
-        <Route path="/" element={<Dashboard />} />
+        {/* The portal is a single page: website documents */}
+        <Route path="/" element={<WebsiteDocuments />} />
 
-        <Route
-          path="/dashboard"
-          element={<Navigate to="/" replace />}
-        />
-
-        {/* Profile */}
-        <Route
-          path="/profile"
-          element={<Profile />}
-        />
-
-        <Route
-          path="/documents"
-          element={<WebsiteDocuments />}
-        />
-
-        <Route
-          path="/folders/:folderId"
-          element={<FolderPage />}
-        />
-
-        {/* Any unwanted/unknown route goes to Dashboard */}
-        <Route
-          path="*"
-          element={<Navigate to="/" replace />}
-        />
+        {/* Old links (/documents, /dashboard, /folders/…) and unknown routes land on it */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppLayout>
   );

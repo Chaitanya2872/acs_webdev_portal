@@ -2,17 +2,15 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   FileText,
-  LayoutDashboard,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
-  ShieldCheck,
 } from "lucide-react";
 
+import logo from "../../assets/fawnix-logo.png";
 import "./index.css";
 
 const menuItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "documents", label: "Website Documents", icon: FileText },
 ];
 
@@ -29,7 +27,7 @@ const readUser = () => {
   }
 };
 
-const Sidebar = ({ activeItem = "dashboard", onNavigate, collapsed = false, onToggle }) => {
+const Sidebar = ({ activeItem = "documents", onNavigate, collapsed = false, onToggle }) => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(readUser);
   const profileWrapRef = useRef(null);
@@ -76,7 +74,7 @@ const Sidebar = ({ activeItem = "dashboard", onNavigate, collapsed = false, onTo
   return (
     <aside className={`fawnix-sidebar ${collapsed ? "collapsed" : ""}`}>
       <div className="sidebar-brand-row">
-        <div className="sidebar-brand-mark"><ShieldCheck size={25} strokeWidth={2.2} /></div>
+        <img className="sidebar-brand-mark" src={logo} width={36} height={41} alt="Fawnix" />
         {!collapsed && <span className="sidebar-brand-name">FAWNIX</span>}
         <button type="button" className="sidebar-collapse-button" onClick={onToggle} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
           {collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
@@ -88,7 +86,7 @@ const Sidebar = ({ activeItem = "dashboard", onNavigate, collapsed = false, onTo
           const Icon = item.icon;
           return (
             <button key={item.id} type="button" className={`sidebar-menu-item ${activeItem === item.id ? "active" : ""}`} onClick={() => onNavigate?.(item)} title={collapsed ? item.label : undefined}>
-              <Icon size={20} strokeWidth={1.9} />
+              <Icon size={18} strokeWidth={1.9} />
               {!collapsed && <span>{item.label}</span>}
             </button>
           );

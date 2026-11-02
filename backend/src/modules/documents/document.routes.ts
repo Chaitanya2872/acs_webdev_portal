@@ -29,6 +29,12 @@ export function documentAdminRoutes(service: DocumentService, audit: AuditServic
       handler: async (request) => createSuccessResponse(await service.listDocuments(request.query)),
     });
 
+    fastify.get('/api/v1/admin/documents/stats', {
+      preHandler: guards.anyUser,
+      schema: { tags },
+      handler: async () => createSuccessResponse(await service.getStatusCounts()),
+    });
+
     fastify.get('/api/v1/admin/documents/financial-years', {
       preHandler: guards.anyUser,
       schema: { tags },

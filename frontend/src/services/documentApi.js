@@ -17,6 +17,9 @@ export const listDocuments = (params) => apiRequest(`/admin/documents${toQuery(p
 
 export const listFinancialYears = () => apiRequest("/admin/documents/financial-years");
 
+/** { total, active, draft, published, unpublished, archived } */
+export const getDocumentStats = () => apiRequest("/admin/documents/stats");
+
 export const getDocument = (id) => apiRequest(`/admin/documents/${id}`);
 
 export const getDocumentAudit = (id) => apiRequest(`/admin/documents/${id}/audit`);

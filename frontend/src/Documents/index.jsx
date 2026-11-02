@@ -2,11 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Archive,
   ArchiveRestore,
+  Bell,
   Download,
   ExternalLink,
   Eye,
   EyeOff,
+  FilePen,
   FilePlus2,
+  Files,
   Globe2,
   Info,
   Loader2,
@@ -22,6 +25,7 @@ import {
   changeDocumentStatus,
   deleteDocument,
   getDocumentFileUrl,
+  getDocumentStats,
   listCategories,
   listDocuments,
   listFinancialYears,
@@ -33,7 +37,7 @@ import DocumentFormDialog from "./DocumentFormDialog";
 import ReplaceFileDialog from "./ReplaceFileDialog";
 import { STATUS_LABELS, formatDate, indexCategories, websitePageUrl } from "./documentUtils";
 
-import "../Folders/FolderPage.css";
+import "./page.css";
 import "./index.css";
 
 const PAGE_SIZE = 25;
@@ -44,6 +48,15 @@ const STATUS_ACTIONS = {
   archive: { label: "Archive", done: "archived", confirm: "Archived documents are hidden from the website and from the default list. They can be restored." },
   restore: { label: "Restore", done: "restored (unpublished)", confirm: null },
 };
+
+// KPI cards; each one also filters the table by its status.
+const KPI_CARDS = [
+  { status: "active", label: "All documents", hint: "Excluding archived", icon: Files },
+  { status: "published", label: "Published", hint: "Live on the website", icon: Globe2 },
+  { status: "draft", label: "Drafts", hint: "Not published yet", icon: FilePen },
+  { status: "unpublished", label: "Unpublished", hint: "Taken off the website", icon: EyeOff },
+  { status: "archived", label: "Archived", hint: "Hidden from the list", icon: Archive },
+];
 
 const WebsiteDocuments = () => {
   const notify = useToast();
@@ -62,6 +75,7 @@ const WebsiteDocuments = () => {
   const [menuId, setMenuId] = useState(null);
   const [dialog, setDialog] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [stats, setStats] = useState(null);
 
   const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
 
@@ -73,6 +87,7 @@ const WebsiteDocuments = () => {
 
   useEffect(() => {
     listFinancialYears().then(setYears).catch(() => setYears([]));
+    getDocumentStats().then(setStats).catch(() => setStats(null));
   }, [refreshKey]);
 
   // Debounce the search box.
@@ -185,49 +200,75 @@ const WebsiteDocuments = () => {
 
   return (
     <div className="wd-page">
-      <header className="folder-page-header wd-header">
+      <header className="wd-header">
         <div className="wd-header-icon"><Globe2 size={24} /></div>
         <div className="folder-page-title">
           <h1>Website Documents</h1>
           <p>PDFs published here appear on acstechnologies.co.in automatically — no website changes needed.</p>
         </div>
-        {editor && (
-          <button type="button" className="fp-btn fp-btn-primary wd-upload-button" onClick={() => setDialog({ type: "create" })} disabled={!categories.tree.length}>
-            <FilePlus2 size={16} /> Upload document
+        <div className="wd-header-actions">
+          <button type="button" className="wd-notification" aria-label="Notifications">
+            <Bell size={19} />
+            <i />
           </button>
-        )}
+          {editor && (
+            <button type="button" className="fp-btn fp-btn-primary wd-upload-button" onClick={() => setDialog({ type: "create" })} disabled={!categories.tree.length}>
+              <FilePlus2 size={16} /> Upload document
+            </button>
+          )}
+        </div>
       </header>
 
-      <section className="folder-documents-card wd-card">
-        <div className="folder-documents-toolbar wd-toolbar">
-          <div className="folder-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search titles and file names" aria-label="Search documents" /></div>
-          <select value={filters.categoryId} onChange={(event) => setFilter("categoryId", event.target.value)} aria-label="Filter by website section">
-            <option value="">All sections</option>
-            {categoryOptions.map((node) => (
-              node.isLeaf
-                ? <option key={node.id} value={node.id}>{node.name}</option>
-                : (
-                  <optgroup key={node.id} label={node.name}>
-                    <option value={node.id}>All {node.name}</option>
-                    {node.children.filter((child) => child.isActive).map((child) => <option key={child.id} value={child.id}>{child.name}</option>)}
-                  </optgroup>
-                )
-            ))}
-          </select>
-          <select value={filters.status} onChange={(event) => setFilter("status", event.target.value)} aria-label="Filter by status">
-            <option value="active">All except archived</option>
-            <option value="published">Published</option>
-            <option value="draft">Drafts</option>
-            <option value="unpublished">Unpublished</option>
-            <option value="archived">Archived</option>
-          </select>
-          <select value={filters.financialYear} onChange={(event) => setFilter("financialYear", event.target.value)} aria-label="Filter by financial year">
-            <option value="">All years</option>
-            {years.map((year) => <option key={year} value={year}>FY {year}</option>)}
-          </select>
-          <button type="button" className="wd-icon-button" title="Refresh" aria-label="Refresh list" onClick={refresh}><RefreshCw size={16} /></button>
-        </div>
+      <section className="wd-kpis" aria-label="Documents by status">
+        {KPI_CARDS.map(({ status, label, hint, icon: Icon }) => (
+          <button
+            key={status}
+            type="button"
+            className={`wd-kpi wd-kpi-${status}${filters.status === status ? " is-active" : ""}`}
+            aria-pressed={filters.status === status}
+            title={`Show ${label.toLowerCase()}`}
+            onClick={() => setFilter("status", status)}
+          >
+            <span className="wd-kpi-top">
+              <span className="wd-kpi-label">{label}</span>
+              <span className="wd-kpi-icon"><Icon size={16} /></span>
+            </span>
+            <strong className="wd-kpi-value">{stats ? stats[status].toLocaleString("en-IN") : "—"}</strong>
+            <small className="wd-kpi-hint">{hint}</small>
+          </button>
+        ))}
+      </section>
 
+      <div className="folder-documents-toolbar wd-toolbar">
+        <div className="folder-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search titles and file names" aria-label="Search documents" /></div>
+        <select value={filters.categoryId} onChange={(event) => setFilter("categoryId", event.target.value)} aria-label="Filter by website section">
+          <option value="">All sections</option>
+          {categoryOptions.map((node) => (
+            node.isLeaf
+              ? <option key={node.id} value={node.id}>{node.name}</option>
+              : (
+                <optgroup key={node.id} label={node.name}>
+                  <option value={node.id}>All {node.name}</option>
+                  {node.children.filter((child) => child.isActive).map((child) => <option key={child.id} value={child.id}>{child.name}</option>)}
+                </optgroup>
+              )
+          ))}
+        </select>
+        <select value={filters.status} onChange={(event) => setFilter("status", event.target.value)} aria-label="Filter by status">
+          <option value="active">All except archived</option>
+          <option value="published">Published</option>
+          <option value="draft">Drafts</option>
+          <option value="unpublished">Unpublished</option>
+          <option value="archived">Archived</option>
+        </select>
+        <select value={filters.financialYear} onChange={(event) => setFilter("financialYear", event.target.value)} aria-label="Filter by financial year">
+          <option value="">All years</option>
+          {years.map((year) => <option key={year} value={year}>FY {year}</option>)}
+        </select>
+        <button type="button" className="wd-icon-button" title="Refresh" aria-label="Refresh list" onClick={refresh}><RefreshCw size={16} /></button>
+      </div>
+
+      <section className="folder-documents-card wd-card">
         {loadError && <div className="folder-feedback error" role="alert"><span>{loadError}</span></div>}
 
         <div className="wd-table-wrap">
