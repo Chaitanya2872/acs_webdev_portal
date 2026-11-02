@@ -56,6 +56,9 @@ const envSchema = z.object({
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
   SMTP_FROM: z.string().default(''),
+
+  // Fawnix Attend is the source of truth for employee OTP authentication.
+  FAWNIX_ATTEND_BASE_URL: z.string().url().default(''),
 });
 
 export const env = envSchema.parse(process.env);
@@ -84,6 +87,7 @@ export function validateProductionSecurityConfig() {
 
   const problems: string[] = [];
   if (env.AUTH_SECRET.length < 32) problems.push('AUTH_SECRET must be at least 32 characters');
+  if (!env.FAWNIX_ATTEND_BASE_URL) problems.push('FAWNIX_ATTEND_BASE_URL is required');
   if (env.OTP_DELIVERY === 'log') problems.push('OTP_DELIVERY=log is not allowed in production');
   if (env.DATABASE_URL.startsWith('pglite:')) problems.push('DATABASE_URL must point to PostgreSQL in production');
   if (env.STORAGE_MODE !== 's3') problems.push('STORAGE_MODE must be s3 in production');

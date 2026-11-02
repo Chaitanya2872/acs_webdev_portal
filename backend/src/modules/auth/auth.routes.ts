@@ -30,7 +30,7 @@ export function authRoutes(authService: AuthService, guards: AuthGuards) {
       },
       handler: async (request) => {
         const { employeeCode } = request.body as { employeeCode: string };
-        return createSuccessResponse(await authService.requestOtp(employeeCode, request.ip));
+        return createSuccessResponse(await authService.requestAttendOtp(employeeCode));
       },
     });
 
@@ -44,6 +44,7 @@ export function authRoutes(authService: AuthService, guards: AuthGuards) {
           properties: {
             employeeCode: { type: 'string', minLength: 2, maxLength: 64 },
             otp: { type: 'string', minLength: 6, maxLength: 6 },
+            deviceInfo: { type: 'object', additionalProperties: true },
           },
         },
         response: {
@@ -57,8 +58,8 @@ export function authRoutes(authService: AuthService, guards: AuthGuards) {
         },
       },
       handler: async (request) => {
-        const { employeeCode, otp } = request.body as { employeeCode: string; otp: string };
-        const session = await authService.verifyOtp(employeeCode, otp, { ip: request.ip, userAgent: request.headers['user-agent'] ?? null });
+        const { employeeCode, otp, deviceInfo } = request.body as { employeeCode: string; otp: string; deviceInfo?: object };
+        const session = await authService.verifyAttendOtp(employeeCode, otp, { ip: request.ip, userAgent: request.headers['user-agent'] ?? null, deviceInfo });
         return createSuccessResponse(session);
       },
     });
@@ -73,10 +74,21 @@ export function authRoutes(authService: AuthService, guards: AuthGuards) {
     });
 
     fastify.post('/api/v1/auth/logout', {
-      preHandler: guards.anyUser,
-      schema: { tags: ['Auth'] },
+      schema: {
+        tags: ['Auth'],
+        body: {
+          type: 'object',
+          required: ['refreshToken'],
+          properties: { refreshToken: { type: 'string', minLength: 1, maxLength: 4096 } },
+        },
+      },
       handler: async (request) => {
-        await authService.logout(bearerToken(request) ?? '', request.user!, request.ip);
+        const { refreshToken } = request.body as { refreshToken: string };
+        // The Fawnix refresh token is valid even if the portal access token already expired.
+        await authService.logoutAttend(refreshToken);
+        const token = bearerToken(request);
+        const user = token ? await authService.authenticate(token) : null;
+        if (token && user) await authService.logout(token, user, request.ip);
         return createSuccessResponse({ loggedOut: true });
       },
     });

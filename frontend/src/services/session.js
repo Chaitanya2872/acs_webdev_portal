@@ -1,8 +1,9 @@
-// Signed-in portal session (bearer token + user), kept in localStorage alongside the existing
-// fawnix_* keys the layout reads for the profile menu.
+// Fawnix Attend session, kept alongside the existing fawnix_* keys the layout reads.
 
 const TOKEN_KEY = "acs_portal_token";
 const EXPIRES_KEY = "acs_portal_token_expires";
+const REFRESH_TOKEN_KEY = "acs_portal_refresh_token";
+const ATTEND_ACCESS_TOKEN_KEY = "fawnix_attend_access_token";
 const USER_KEY = "fawnix_user";
 const LOGGED_IN_KEY = "fawnix_logged_in";
 
@@ -23,8 +24,18 @@ export function getSessionUser() {
   }
 }
 
-export function saveSession({ token, expiresAt, user }) {
+export function getRefreshToken() {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function saveSession({ token, expiresAt, attendAccessToken, refreshToken, user }) {
+  if (!token || !refreshToken) {
+    throw new Error("The sign-in service did not return both session tokens.");
+  }
+
   localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  if (attendAccessToken) localStorage.setItem(ATTEND_ACCESS_TOKEN_KEY, attendAccessToken);
   localStorage.setItem(EXPIRES_KEY, expiresAt);
   storeUser(user);
   localStorage.setItem(LOGGED_IN_KEY, "true");
@@ -38,7 +49,7 @@ export function storeUser(user) {
 }
 
 export function clearSession() {
-  [TOKEN_KEY, EXPIRES_KEY, USER_KEY, LOGGED_IN_KEY, "fawnix_user_name", "fawnix_user_email"].forEach((key) => localStorage.removeItem(key));
+  [TOKEN_KEY, REFRESH_TOKEN_KEY, ATTEND_ACCESS_TOKEN_KEY, EXPIRES_KEY, USER_KEY, LOGGED_IN_KEY, "fawnix_user_name", "fawnix_user_email"].forEach((key) => localStorage.removeItem(key));
   window.dispatchEvent(new Event("fawnix-user-updated"));
 }
 

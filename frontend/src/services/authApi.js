@@ -1,5 +1,11 @@
 import { apiRequest } from "./apiClient";
-import { clearSession, saveSession } from "./session";
+import { clearSession, getRefreshToken, saveSession } from "./session";
+
+const deviceInfo = () => ({
+  device_name: navigator.userAgent,
+  os: navigator.platform || "Web",
+  app_version: "acs-webdev-portal",
+});
 
 export function requestOtp({ employeeCode }) {
   return apiRequest("/auth/otp/request", {
@@ -11,22 +17,31 @@ export function requestOtp({ employeeCode }) {
 export async function verifyOtp({ employeeCode, otp }) {
   const session = await apiRequest("/auth/otp/verify", {
     method: "POST",
-    body: JSON.stringify({ employeeCode, otp }),
+    body: JSON.stringify({ employeeCode, otp, deviceInfo: deviceInfo() }),
   });
-  saveSession(session);
+  saveSession({
+    token: session.token,
+    expiresAt: session.expiresAt,
+    attendAccessToken: session.attend.access_token,
+    refreshToken: session.attend.refresh_token,
+    user: session.user,
+  });
   return session;
 }
 
-export function fetchCurrentUser() {
-  return apiRequest("/auth/me");
-}
-
 export async function logout() {
+  const refreshToken = getRefreshToken();
   try {
-    await apiRequest("/auth/logout", { method: "POST" });
+    if (refreshToken) {
+      await apiRequest("/auth/logout", {
+        method: "POST",
+        body: JSON.stringify({ refreshToken }),
+      });
+    }
   } catch {
-    // The session is cleared locally either way.
+    // Attend treats an unknown or revoked token as logged out; clear the browser session on network errors too.
   } finally {
     clearSession();
   }
 }
+

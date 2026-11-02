@@ -15,6 +15,9 @@ export type AuthUser = {
   role: Role;
 };
 
+type AttendUser = { id?: number; user_id?: number; emp_code: string; emp_full_name: string; emp_email?: string | null; role?: string };
+type AttendSession = { success: boolean; access_token: string; refresh_token: string; expires_in: number; refresh_expires_in?: number; refresh_expires_at?: string; user: AttendUser };
+
 type UserRow = { id: number; employee_code: string; name: string; email: string | null; role: Role; is_active: boolean };
 
 const OTP_LENGTH = 6;
@@ -53,6 +56,69 @@ export class AuthService {
     );
     const user = result.rows[0];
     return user && user.is_active ? user : null;
+  }
+
+  private async attendRequest<T>(path: string, body: object): Promise<T> {
+    if (!env.FAWNIX_ATTEND_BASE_URL) {
+      throw new AppError('AUTH_NOT_CONFIGURED', 'Fawnix Attend authentication is not configured.', 503);
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${env.FAWNIX_ATTEND_BASE_URL.replace(/\/+$/, '')}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw new AppError('AUTH_SERVICE_UNAVAILABLE', 'Unable to reach Fawnix Attend.', 503);
+    }
+
+    const payload = await response.json().catch(() => null) as { message?: string; error?: { message?: string } } | null;
+    if (!response.ok) {
+      throw new AppError('FAWNIX_AUTH_FAILED', payload?.message ?? payload?.error?.message ?? 'Fawnix Attend rejected the request.', response.status);
+    }
+    return payload as T;
+  }
+
+  private async createPortalSession(user: UserRow, meta: { ip: string | null; userAgent: string | null }) {
+    const token = crypto.randomBytes(32).toString('base64url');
+    const session = await this.db.transaction(async (tx) => {
+      const created = await tx.query<{ expires_at: Date }>(
+        `INSERT INTO auth_sessions (token_hash, user_id, expires_at, ip, user_agent)
+         VALUES ($1, $2, now() + make_interval(secs => $3), $4, $5) RETURNING expires_at`,
+        [sha256(token), user.id, Math.round(env.SESSION_TTL_HOURS * 3600), meta.ip, meta.userAgent?.slice(0, 300) ?? null],
+      );
+      await tx.query('UPDATE admin_users SET last_login_at = now() WHERE id = $1', [user.id]);
+      await this.audit.record({ id: user.id, label: user.employee_code, ip: meta.ip }, { action: 'auth.login', entityType: 'admin_user', entityId: user.id }, tx);
+      return created.rows[0];
+    });
+    return { token, expiresAt: new Date(session.expires_at).toISOString(), user: toAuthUser(user) };
+  }
+
+  async requestAttendOtp(employeeCode: string) {
+    return this.attendRequest<{ success: boolean; message: string; expires_in_minutes?: number }>('/api/auth/request-otp', { emp_code: employeeCode });
+  }
+
+  async verifyAttendOtp(employeeCode: string, otp: string, meta: { ip: string | null; userAgent: string | null; deviceInfo?: object }) {
+    const attend = await this.attendRequest<AttendSession>('/api/auth/verify-otp', {
+      emp_code: employeeCode,
+      otp,
+      ...(meta.deviceInfo ? { device_info: meta.deviceInfo } : {}),
+    });
+    if (!attend.success || !attend.access_token || !attend.refresh_token || !attend.user) {
+      throw new AppError('FAWNIX_AUTH_FAILED', 'Fawnix Attend returned an incomplete session.', 502);
+    }
+
+    // Attend proves identity; the portal database remains the authorization source.
+    const user = await this.findActiveUser(attend.user.emp_code);
+    if (!user) throw new AppError('PORTAL_ACCESS_DENIED', 'Your employee account is not authorized to access this portal.', 403);
+
+    return { ...(await this.createPortalSession(user, meta)), attend };
+  }
+
+  async logoutAttend(refreshToken: string) {
+    return this.attendRequest<{ success: boolean; message: string }>('/api/auth/logout', { refresh_token: refreshToken, logout_all: false });
   }
 
   async requestOtp(employeeCode: string, ip: string | null): Promise<{ message: string; resendAfterSeconds: number }> {
@@ -125,21 +191,9 @@ export class AuthService {
       throw invalid;
     }
 
-    const token = crypto.randomBytes(32).toString('base64url');
-    const session = await this.db.transaction(async (tx) => {
-      const consumed = await tx.query('UPDATE auth_otps SET consumed_at = now() WHERE id = $1 AND consumed_at IS NULL', [challenge.id]);
-      if (consumed.rowCount !== 1) throw invalid;
-      const created = await tx.query<{ expires_at: Date }>(
-        `INSERT INTO auth_sessions (token_hash, user_id, expires_at, ip, user_agent)
-         VALUES ($1, $2, now() + make_interval(secs => $3), $4, $5) RETURNING expires_at`,
-        [sha256(token), user.id, Math.round(env.SESSION_TTL_HOURS * 3600), meta.ip, meta.userAgent?.slice(0, 300) ?? null],
-      );
-      await tx.query('UPDATE admin_users SET last_login_at = now() WHERE id = $1', [user.id]);
-      await this.audit.record({ id: user.id, label: user.employee_code, ip: meta.ip }, { action: 'auth.login', entityType: 'admin_user', entityId: user.id }, tx);
-      return created.rows[0];
-    });
-
-    return { token, expiresAt: new Date(session.expires_at).toISOString(), user: toAuthUser(user) };
+    const consumed = await this.db.query('UPDATE auth_otps SET consumed_at = now() WHERE id = $1 AND consumed_at IS NULL', [challenge.id]);
+    if (consumed.rowCount !== 1) throw invalid;
+    return this.createPortalSession(user, meta);
   }
 
   async authenticate(token: string): Promise<AuthUser | null> {
