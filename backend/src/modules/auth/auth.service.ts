@@ -58,6 +58,31 @@ export class AuthService {
     return user && user.is_active ? user : null;
   }
 
+  /**
+   * A successful Attend OTP verification establishes that the employee is active.
+   * Provision employees as publishers so every active Attend user can manage
+   * portal content, while preserving existing administrator access.
+   */
+  private async provisionAttendUser(user: AttendUser): Promise<UserRow> {
+    const result = await this.db.query<UserRow>(
+      `INSERT INTO admin_users (employee_code, name, email, role, is_active)
+       VALUES ($1, $2, $3, 'publisher', TRUE)
+       ON CONFLICT ((lower(employee_code))) DO UPDATE
+         SET name = EXCLUDED.name,
+             email = EXCLUDED.email,
+             role = CASE WHEN admin_users.role = 'admin' THEN 'admin' ELSE 'publisher' END,
+             is_active = TRUE,
+             updated_at = now()
+       RETURNING id, employee_code, name, email, role, is_active`,
+      [
+        user.emp_code.trim(),
+        user.emp_full_name.trim() || user.emp_code.trim(),
+        user.emp_email?.trim() || null,
+      ],
+    );
+    return result.rows[0];
+  }
+
   private async attendRequest<T>(path: string, body: object): Promise<T> {
     if (!env.FAWNIX_ATTEND_BASE_URL) {
       throw new AppError('AUTH_NOT_CONFIGURED', 'Fawnix Attend authentication is not configured.', 503);
@@ -110,9 +135,9 @@ export class AuthService {
       throw new AppError('FAWNIX_AUTH_FAILED', 'Fawnix Attend returned an incomplete session.', 502);
     }
 
-    // Attend proves identity; the portal database remains the authorization source.
-    const user = await this.findActiveUser(attend.user.emp_code);
-    if (!user) throw new AppError('PORTAL_ACCESS_DENIED', 'Your employee account is not authorized to access this portal.', 403);
+    // Attend is the eligibility source. The local database holds portal permissions;
+    // each successfully verified employee receives publisher access.
+    const user = await this.provisionAttendUser(attend.user);
 
     return { ...(await this.createPortalSession(user, meta)), attend };
   }
